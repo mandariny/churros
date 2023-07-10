@@ -1,0 +1,39 @@
+
+
+# 로깅 설정
+verbose = true
+# 연결 설정
+mongo-url = "mongodb://churros:A503@churros-mongodb:27017"
+elasticsearch-urls = ["http://churros-elasticsearch:9200"]
+# elasticsearch-urls = ["https://localhost:9200"]
+# 자주 필요한 설정
+direct-read-namespaces = ["newsdb.newsCol"]
+change-stream-namespaces = ["newsdb.newsCol"]
+
+# 추가 설정
+elasticsearch-user = "elastic"
+elasticsearch-password = "A503!23"
+
+# Routing 설정
+[[mapping]]
+namespace = "newsdb.newsCol"
+index = "news"
+
+# 필드 필터링 스크립트
+[[script]]
+namespace = "newsdb.newsCol"
+script = """
+module.exports = function(doc)  {
+    // 새로운 문서 객체 생성
+    var newDoc = {
+	_idx: doc._idx,
+	link: doc.link,
+	img_src: doc.img_src,
+        title: doc.title,
+        description: doc.description
+    };
+
+    // 새로운 문서 객체 반환
+    return newDoc;
+}
+"""

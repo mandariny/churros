@@ -1,0 +1,3 @@
+docker build -t churros-elasticsearch .
+
+docker run -d --name churros-elasticsearch -p 9200:9200 -p 9300:9300 churros-elasticsearch

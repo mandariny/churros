@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  churros-backend:
+    container_name: churros-backend
+    build:
+      dockerfile: Dockerfile
+      context: ./backend
+    environment:
+      - ELASTICSEARCH_PASSWORD=A503!23
+      - ELASTICSEARCH_ID=elastic
+      - MARIADB_PASSWORD=A503
+      - MONGODB_URI=mongodb://churros:A503@churros-mongodb:27017/newsdb
+    ports:
+      - "9999:9999"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+  # churros-crs:
+  #   container_name: churros-crs
+  #   build:
+  #     context: ./recommend/pyrecommend-server
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5555:8000"
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+networks:
+  default:
+    name: cd_network
+    external: true

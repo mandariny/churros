@@ -1,0 +1,126 @@
+pipeline {
+    agent any
+    environment {
+        SKIP_BUILD = "${env.gitlabBranch != 'master'}"
+        dockerComposeUpResult = 0
+
+    }
+    stages {
+        stage("Print Event Info") {
+            when {
+                expression { return SKIP_BUILD == "true" }
+            }
+            steps {
+
+                mattermostSend(color: "#00FF80", message: "Build start User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+                echo "Branch : ${env.gitlabBranch}"
+                echo "URL : ${env.gitlabSourceRepoURL}"
+                echo "User : ${env.gitlabUserName}"
+                echo "Action : ${env.gitlabActionType}"
+            }
+        }
+        stage('Clone') {
+            when {
+                expression { return SKIP_BUILD == "true" }
+            }
+            steps {
+                git branch: "${env.gitlabBranch}", url:'${GIT_URL}'
+                // git branch: "dev", url:'${GIT_URL}'
+            }
+        }
+        stage('Docker compose down') {
+            when {
+                expression { return SKIP_BUILD == "true" }
+            }
+            steps {
+                echo "docker compose down"
+                sh "sudo docker-compose -f docker-compose.yml down --rmi all"
+            }
+        }
+        stage('React Build') {
+              steps {
+                echo "React Build Start"
+                sh "cd /var/jenkins_home/workspace/A503/frontend/churros && npm i && npm run build --max-warnings=0 . || true"
+                echo "npm run success"
+                sh "rm -rf /var/jenkins_home/churros-react-app/build"
+                echo "rm -rf success"
+                sh "mv /var/jenkins_home/workspace/A503/frontend/churros/build /var/jenkins_home/churros-react-app"
+                echo "mv success"
+              }
+              post {
+                success {
+                  echo 'Success to npm build'
+                }
+                failure {
+                  mattermostSend(color: "#ff0000", message: "Build Fail User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+                  echo 'npm build failed'
+                  error 'pipeline aborted.'
+                }
+              }
+            }
+        // stage('React Build'){
+        //     steps{
+        //         echo " React Build Start"
+        //         sh "cd /var/jenkins_home/workspace/A503/frontend/churros && npm i && npm run build ."
+        //         echo "npm run success"
+        //         sh "rm -rf /var/jenkins_home/churros-react-app/build"
+        //         echo "rm -rf success"
+        //         sh "mv /var/jenkins_home/workspace/A503/frontend/churros/build /var/jenkins_home/churros-react-app"
+        //         echo "mv success"
+        //     }
+        //     post {
+        //         success {
+        //             echo 'Success to npm build'
+
+        //         }
+        //         failure {
+        //             mattermostSend(color: "#ff0000", message: "Build Fail User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+        //             echo 'npm build failed'
+        //             error 'pipeline aborted.'
+        //         }
+        //     }
+        // }
+        
+        stage('Docker compose build') {
+            when {
+                expression { return SKIP_BUILD == "true"}
+            }
+            steps {
+                echo "docker compose build"
+                sh "sudo docker-compose -f docker-compose.yml build --no-cache"
+            }
+            post {
+                success {
+                    echo 'Success to build'
+                }
+                failure {
+                    mattermostSend(color: "#ff0000", message: "Build Fail User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+                    echo 'Docker build failed. remove all test images'
+                    sh "sudo docker-compose -f docker-compose.yml down --rmi all"
+                    error 'pipeline aborted.'
+                }
+            }
+        }
+        stage('Docker compose up') {
+            when {
+                expression { return SKIP_BUILD == "true" }
+            }
+            steps {
+                echo "docker compose up"
+                sh "sudo docker-compose -f docker-compose.yml up -d"
+            }
+            post {
+                success {
+                    mattermostSend(color: "#2A42EE", message: "Compose Success User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+                    echo 'Success to run docker compose'
+                }
+                failure {
+                    mattermostSend(color: "#ff0000", message: "Compose Fail User: ${env.gitlabUserName} Branch : ${env.gitlabBranch} Action : ${env.gitlabActionType} ")
+                    echo 'Docker run failed. remove all test images'
+                    sh "sudo docker-compose -f docker-compose.yml down --rmi all"
+                    error 'pipeline aborted.'
+                }
+            }
+        }
+    }
+}
